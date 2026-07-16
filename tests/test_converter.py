@@ -104,6 +104,44 @@ def test_converter_backspace_removes_last_digit(calculator):
     converter.go_back()
 
 
+def test_converter_backspace_on_single_digit_empties_field(calculator):
+    # Boundary between "has content" and "empty", same as the keypad's.
+    calculator.open_converter()
+    converter = ConverterPage(calculator.driver).wait_loaded()
+
+    converter.clear_value()
+    converter.type_value("7")
+    converter.backspace()
+
+    assert converter.get_source_value() == "", (
+        f"Expected an empty source field after backspacing the only digit, got {converter.get_source_value()!r}"
+    )
+    assert converter.get_converted_value() == "", (
+        f"Expected an empty converted field too, got {converter.get_converted_value()!r}"
+    )
+
+    converter.go_back()
+
+
+def test_converter_accepts_decimal_input(calculator):
+    # Confirmed on-device: 1.5 Acres = 6070.2846336 Square Meters.
+    calculator.open_converter()
+    converter = ConverterPage(calculator.driver).wait_loaded()
+
+    converter.clear_value()
+    converter.type_value("1.5")
+
+    assert converter.get_source_value() == "1.5", (
+        f"Expected the source field to keep '1.5', got {converter.get_source_value()!r}"
+    )
+    converted = converter.get_converted_value()
+    assert float(converted) == pytest.approx(6070.2846336), (
+        f"Expected ~6070.2846336 (1.5 Acres in Square Meters), got {converted!r}"
+    )
+
+    converter.go_back()
+
+
 def test_converter_clear_empties_both_fields(calculator):
     calculator.open_converter()
     converter = ConverterPage(calculator.driver).wait_loaded()

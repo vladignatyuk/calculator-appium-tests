@@ -6,20 +6,29 @@ using the **Page Object Model**. Runs against a real Android device.
 
 ## Scope
 
-- **Keypad**: addition, subtraction, multiplication, division, decimals,
-  negative numbers (sign toggle, double toggle), percentage, parentheses,
-  repeated `=`, leading zeros, clear, backspace.
+- **Keypad**: addition, subtraction, multiplication (incl. by zero),
+  division (incl. a non-terminating result), subtraction to a negative
+  result, decimals, a leading decimal point, negative numbers (sign toggle,
+  double toggle), percentage (standalone and within an expression, incl.
+  `0%`), parentheses, repeated `=`, leading zeros, clear, backspace (incl.
+  down to the last remaining digit).
 - **Errors / edge cases**: divide by zero (including `0/0` and a negative
-  dividend), long numbers, repeated operators, backspace/clear on an already
-  empty display, a doubled decimal point, overflow into scientific notation.
+  dividend), long numbers, repeated operators, an operator pressed before any
+  operand, `=` on a fully empty display, an unclosed parenthesis,
+  backspace/clear on an already empty display, a doubled decimal point,
+  overflow into scientific notation.
 - **History**: a calculation appears in history, clearing history, entries
   stay in chronological order across multiple calculations, a repeated `=`
   adds its own entry, a failed (error) calculation is *not* recorded.
 - **Unit converter**: default category/units, producing a converted value,
-  switching category tabs, negative converted values, backspace, clearing
-  both fields.
+  decimal input, switching category tabs, negative converted values,
+  backspace (incl. down to an empty field), clearing both fields.
 
-Scientific mode is intentionally out of scope for this suite.
+Scientific mode is intentionally out of scope for this suite. Tests
+deliberately favor equivalence-class coverage over exhaustiveness — e.g. only
+2 of the converter's 5 categories are exercised, since switching category is
+the same code path regardless of which one; extra categories would add
+runtime without covering new behavior.
 
 ## Behavioral notes (confirmed on-device)
 

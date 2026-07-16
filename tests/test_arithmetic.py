@@ -12,8 +12,20 @@ import pytest
         (["6", "*", "7", "="], "42"),
         (["1", "0", "/", "2", "="], "5"),
         (["7", ".", "5", "+", "2", ".", "5", "="], "10"),
+        (["5", "*", "0", "="], "0"),
+        (["3", "-", "1", "0", "="], "-7"),
+        (["1", "0", "/", "3", "="], "3.333"),
     ],
-    ids=["addition", "subtraction", "multiplication", "division", "decimals"],
+    ids=[
+        "addition",
+        "subtraction",
+        "multiplication",
+        "division",
+        "decimals",
+        "multiplication_by_zero",
+        "subtraction_to_negative_result",
+        "non_terminating_division",
+    ],
 )
 def test_basic_operations(calculator, sequence, expected):
     calculator.enter_sequence(sequence)
@@ -31,13 +43,39 @@ def test_negative_number_with_sign_toggle(calculator):
     )
 
 
-def test_percentage(calculator):
-    # Confirmed on-device: 50 % -> 0.5
-    calculator.enter_sequence(["5", "0", "%"])
+@pytest.mark.parametrize(
+    "sequence, expected",
+    [
+        (["5", "0", "%"], "0.5"),
+        (["0", "%"], "0"),
+    ],
+    ids=["fifty_percent", "zero_percent"],
+)
+def test_percentage(calculator, sequence, expected):
+    # Confirmed on-device: 50 % -> 0.5, 0 % -> 0.
+    calculator.enter_sequence(sequence)
     formula, result = calculator.wait_for_output()
-    assert formula.startswith("0.5") or result.startswith("0.5"), (
-        f"Expected '0.5', got formula={formula!r} result={result!r}"
+    assert formula.startswith(expected) or result.startswith(expected), (
+        f"Expected {expected!r}, got formula={formula!r} result={result!r}"
     )
+
+
+def test_percentage_within_expression(calculator):
+    # Confirmed on-device: unlike standalone '%', a percentage used after an
+    # operator is taken as a percentage OF the other operand: 10% of 200 is
+    # 20, so 200 + 10% = 220 -- a distinct equivalence class from a bare '%'.
+    calculator.enter_sequence(["2", "0", "0", "+", "1", "0", "%"])
+    formula, result = calculator.wait_for_output()
+    assert formula.startswith("220") or result.startswith("220"), (
+        f"Expected '220' for 200+10%, got formula={formula!r} result={result!r}"
+    )
+
+
+def test_leading_decimal_point_prepends_zero(calculator):
+    # Confirmed on-device: typing '.' before any digit prepends a leading 0.
+    calculator.enter_sequence([".", "5"])
+    formula = calculator.get_formula_text()
+    assert formula == "0.5", f"Expected '0.5' for a leading decimal point, got {formula!r}"
 
 
 def test_clear_resets_display(calculator):
@@ -54,6 +92,17 @@ def test_backspace_removes_last_digit(calculator):
     calculator.backspace()
     formula = calculator.get_formula_text()
     assert formula.startswith("12"), f"Expected '12' after backspace, got {formula!r}"
+
+
+def test_backspace_on_single_digit_empties_display(calculator):
+    # Boundary between "has content" and "empty": backspacing the last
+    # remaining digit, not just trimming a multi-digit number.
+    calculator.enter_sequence(["5"])
+    calculator.backspace()
+    formula, result = calculator.get_formula_text(), calculator.get_result_text()
+    assert formula in ("", "0") and result in ("", "0"), (
+        f"Expected empty display after backspacing the only digit, got formula={formula!r} result={result!r}"
+    )
 
 
 def test_parentheses_change_evaluation_order(calculator):

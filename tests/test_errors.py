@@ -85,3 +85,31 @@ def test_overflow_multiplication_uses_scientific_notation(calculator):
     assert "E" in combined, (
         f"Expected scientific notation for an overflowing product, got formula={formula!r} result={result!r}"
     )
+
+
+def test_operator_pressed_before_any_operand_does_not_crash(calculator):
+    # Confirmed on-device: a leading operator with nothing typed yet is a
+    # no-op -- entry effectively starts fresh from the next digit.
+    calculator.enter_sequence(["+", "5", "="])
+    formula, result = calculator.wait_for_output()
+    assert formula.startswith("5") or result.startswith("5"), (
+        f"Expected a leading '+' to be harmless, got formula={formula!r} result={result!r}"
+    )
+
+
+def test_equals_on_empty_display_does_not_crash(calculator):
+    calculator.press("=")
+    formula, result = calculator.get_formula_text(), calculator.get_result_text()
+    assert formula in ("", "0") and result in ("", "0"), (
+        f"Expected '=' on an empty display to stay empty, got formula={formula!r} result={result!r}"
+    )
+
+
+def test_unclosed_parenthesis_does_not_crash(calculator):
+    # Confirmed on-device: an unclosed "(" is tolerated -- '=' evaluates the
+    # expression as if it had been closed, rather than erroring or hanging.
+    calculator.enter_sequence(["()", "2", "+", "3", "="])
+    formula, result = calculator.wait_for_output()
+    assert formula.startswith("5") or result.startswith("5"), (
+        f"Expected an unclosed paren to still evaluate to '5', got formula={formula!r} result={result!r}"
+    )
