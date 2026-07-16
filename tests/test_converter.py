@@ -38,3 +38,81 @@ def test_converter_produces_output_value(calculator):
     )
 
     converter.go_back()
+
+
+def test_converter_switch_category_updates_units(calculator):
+    # Confirmed on-device: switching tabs changes both units and the
+    # conversion in effect. 100 Fahrenheit = 37.7777777778 Celsius.
+    calculator.open_converter()
+    converter = ConverterPage(calculator.driver).wait_loaded()
+
+    converter.select_category("Temperature")
+    converter = ConverterPage(calculator.driver).wait_loaded()
+
+    assert converter.active_tab_title().lower() == "temperature", (
+        f"Expected active tab 'Temperature', got {converter.active_tab_title()!r}"
+    )
+    assert "fahrenheit" in converter.unit_1().lower(), f"Expected 'Fahrenheit', got {converter.unit_1()!r}"
+    assert "celsius" in converter.unit_2().lower(), f"Expected 'Celsius', got {converter.unit_2()!r}"
+
+    converter.clear_value()
+    converter.type_value("100")
+    converted = converter.get_converted_value()
+    assert float(converted) == pytest.approx(37.7777777778, rel=1e-6), (
+        f"Expected ~37.7777777778 (100F in Celsius), got {converted!r}"
+    )
+
+    # Restore the default category so other tests/runs see 'Area' again.
+    converter.select_category("Area")
+    converter.go_back()
+
+
+def test_converter_handles_negative_converted_value(calculator):
+    # Confirmed on-device: negative results are shown with a typographic
+    # minus sign (U+2212, not ASCII '-'); this is a real edge case, not
+    # just a locator issue -- see extract_numeric() in converter_page.py.
+    calculator.open_converter()
+    converter = ConverterPage(calculator.driver).wait_loaded()
+
+    converter.select_category("Temperature")
+    converter = ConverterPage(calculator.driver).wait_loaded()
+
+    converter.clear_value()
+    converter.type_value("0")  # 0 Fahrenheit -> negative Celsius
+    converted = converter.get_converted_value()
+    assert converted.startswith("-"), f"Expected a negative Celsius value, got {converted!r}"
+    assert float(converted) == pytest.approx(-17.7777777778, rel=1e-6), (
+        f"Expected ~-17.7777777778 (0F in Celsius), got {converted!r}"
+    )
+
+    converter.select_category("Area")
+    converter.go_back()
+
+
+def test_converter_backspace_removes_last_digit(calculator):
+    calculator.open_converter()
+    converter = ConverterPage(calculator.driver).wait_loaded()
+
+    converter.clear_value()
+    converter.type_value("123")
+    converter.backspace()
+
+    assert converter.get_source_value() == "12", (
+        f"Expected '12' after backspace, got {converter.get_source_value()!r}"
+    )
+
+    converter.go_back()
+
+
+def test_converter_clear_empties_both_fields(calculator):
+    calculator.open_converter()
+    converter = ConverterPage(calculator.driver).wait_loaded()
+
+    converter.clear_value()
+    converter.type_value("42")
+    converter.clear_value()
+
+    assert converter.get_source_value() == "", "Expected the source field to be empty after clearing"
+    assert converter.get_converted_value() == "", "Expected the converted field to be empty after clearing"
+
+    converter.go_back()

@@ -19,8 +19,15 @@ _SELECTED_ITEM_ID = f"{CALC_PKG}:id/converter_spinner_selected_item"
 # "First number for conversion 1". Pull out just the number.
 _NUMERIC_RE = re.compile(r"[-+]?\d[\d,]*\.?\d*")
 
+# Negative converted values (e.g. Fahrenheit -> Celsius below 32F) are shown
+# with a typographic minus sign (U+2212), not an ASCII hyphen -- normalize it
+# first or the regex above silently drops the sign and returns a positive
+# number for a negative value.
+_UNICODE_MINUS = "−"
+
 
 def extract_numeric(text):
+    text = text.replace(_UNICODE_MINUS, "-")
     match = _NUMERIC_RE.search(text)
     if not match:
         return ""
@@ -49,7 +56,27 @@ class ConverterPage:
         return self
 
     def active_tab_title(self):
+        """Return the name of the currently-selected category tab.
+
+        Confirmed on-device: TAB_TITLE matches all 5 tab-strip entries (Area,
+        Length, Temperature, Volume, Mass), so grabbing the first match
+        always returns "Area" regardless of which tab is actually selected.
+        The selected one is instead identifiable via its content-desc, which
+        ends with "Selected" (e.g. "Temperature Tab 3 of 9 Selected").
+        """
+        for tab in self.driver.find_elements(AppiumBy.ID, self.TAB_TITLE):
+            desc = (tab.get_attribute("content-desc") or "").strip()
+            if desc.endswith("Selected"):
+                return tab.text.strip()
         return self.driver.find_element(AppiumBy.ID, self.TAB_TITLE).text.strip()
+
+    def select_category(self, name):
+        """Switch to a converter category tab by its visible name, e.g. 'Temperature'."""
+        for tab in self.driver.find_elements(AppiumBy.ID, self.TAB_TITLE):
+            if tab.text.strip().lower() == name.lower():
+                tab.click()
+                return self
+        raise ValueError(f"Unknown converter category: {name!r}")
 
     def _spinner_text(self, spinner_locator):
         spinner = self.driver.find_element(AppiumBy.ID, spinner_locator)

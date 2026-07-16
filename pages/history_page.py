@@ -22,7 +22,13 @@ class HistoryPage:
         return bool(elements) and elements[0].is_displayed()
 
     def get_entries(self):
-        """Return [(formula_text, result_text), ...] for each history row, most recent first."""
+        """Return [(formula_text, result_text), ...] for each history row.
+
+        Confirmed on-device: rows are in chronological order (oldest first,
+        most recent last), not most-recent-first. Only currently-rendered
+        rows are returned -- older entries scrolled out of the (RecyclerView)
+        viewport are not included unless scrolled into view first.
+        """
         formulas = [e.text.strip() for e in self.driver.find_elements(AppiumBy.ID, self.ITEM_FORMULA)]
         results = [e.text.strip() for e in self.driver.find_elements(AppiumBy.ID, self.ITEM_RESULT)]
         return list(zip(formulas, results))
@@ -32,6 +38,12 @@ class HistoryPage:
         return self
 
     def close(self):
-        """History is a slide-down panel over the keypad; back returns to it."""
-        self.driver.back()
+        """History is a slide-down panel over the keypad; back returns to it.
+
+        Confirmed on-device: the panel can dismiss itself on its own (e.g.
+        right after clearing it to empty), so only press back if it's still
+        actually open -- otherwise this over-navigates out of the app.
+        """
+        if self.is_open():
+            self.driver.back()
         return self

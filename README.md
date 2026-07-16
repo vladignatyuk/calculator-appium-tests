@@ -7,12 +7,48 @@ using the **Page Object Model**. Runs against a real Android device.
 ## Scope
 
 - **Keypad**: addition, subtraction, multiplication, division, decimals,
-  negative numbers (sign toggle), percentage, clear, backspace.
-- **Errors / edge cases**: divide by zero, long numbers, repeated operators.
-- **History**: calculation appears in history, clearing history.
-- **Unit converter**: default category/units, producing a converted value.
+  negative numbers (sign toggle, double toggle), percentage, parentheses,
+  repeated `=`, leading zeros, clear, backspace.
+- **Errors / edge cases**: divide by zero (including `0/0` and a negative
+  dividend), long numbers, repeated operators, backspace/clear on an already
+  empty display, a doubled decimal point, overflow into scientific notation.
+- **History**: a calculation appears in history, clearing history, entries
+  stay in chronological order across multiple calculations, a repeated `=`
+  adds its own entry, a failed (error) calculation is *not* recorded.
+- **Unit converter**: default category/units, producing a converted value,
+  switching category tabs, negative converted values, backspace, clearing
+  both fields.
 
 Scientific mode is intentionally out of scope for this suite.
+
+## Behavioral notes (confirmed on-device)
+
+A few non-obvious things that shaped how the tests and page objects are
+written — worth knowing before adding more:
+
+- **History order**: `HistoryPage.get_entries()` returns rows in
+  chronological order (oldest first, most recent **last**), not
+  most-recent-first. Also, only currently-rendered rows are returned, so
+  keep ordering assertions to a handful of entries after clearing first.
+- **History panel can self-dismiss**: after `clear_history()` (or
+  sometimes just after being read), the panel may already be closed by the
+  time you'd call `close()`. `HistoryPage.close()` checks `is_open()` first
+  to avoid pressing back once too many and exiting the app entirely.
+  Likewise, opening history while it's *already* empty doesn't render the
+  panel at all (no clear button to click) — see `_ensure_history_cleared()`
+  in `tests/test_history.py`.
+- **Failed calculations aren't recorded in history** (e.g. divide by zero).
+- **Converter category selection persists** across app restarts (it's not
+  reset by `terminate_app`/`activate_app`), so tests that switch category
+  (e.g. to Temperature) restore it back to Area afterwards to avoid
+  breaking `test_converter_default_area_units` for later runs.
+- **Converter negative values use a typographic minus sign** (U+2212), not
+  an ASCII hyphen. `extract_numeric()` normalizes it first — without that,
+  a negative result silently comes back positive instead of raising.
+- **`ConverterPage.active_tab_title()`**: all 5 category tabs share the
+  same `TAB_TITLE` resource-id, so the selected one is identified via its
+  `content-desc`, which ends with `"Selected"` (e.g. `"Temperature Tab 3 of
+  9 Selected"`), rather than by grabbing the first match.
 
 ## Project structure
 
