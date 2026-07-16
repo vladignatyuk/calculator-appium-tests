@@ -2,8 +2,10 @@
 """Page Object for the unit converter screen (ruler icon)."""
 
 import re
+from typing import Union
 
 from appium.webdriver.common.appiumby import AppiumBy
+from appium.webdriver.webdriver import WebDriver
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
@@ -26,7 +28,7 @@ _NUMERIC_RE = re.compile(r"[-+]?\d[\d,]*\.?\d*")
 _UNICODE_MINUS = "−"
 
 
-def extract_numeric(text):
+def extract_numeric(text: str) -> str:
     text = text.replace(_UNICODE_MINUS, "-")
     match = _NUMERIC_RE.search(text)
     if not match:
@@ -47,15 +49,15 @@ class ConverterPage:
     BACKSPACE_BTN = f"{CALC_PKG}:id/converter_keypad_btn_backspace"
     _DIGIT_IDS = {str(d): f"{CALC_PKG}:id/converter_keypad_btn_0{d}" for d in range(10)}
 
-    def __init__(self, driver):
+    def __init__(self, driver: WebDriver) -> None:
         self.driver = driver
         self.wait = WebDriverWait(driver, 15)
 
-    def wait_loaded(self):
+    def wait_loaded(self) -> "ConverterPage":
         self.wait.until(EC.presence_of_element_located((AppiumBy.ID, self.INPUT_1)))
         return self
 
-    def active_tab_title(self):
+    def active_tab_title(self) -> str:
         """Return the name of the currently-selected category tab.
 
         Confirmed on-device: TAB_TITLE matches all 5 tab-strip entries (Area,
@@ -70,7 +72,7 @@ class ConverterPage:
                 return tab.text.strip()
         return self.driver.find_element(AppiumBy.ID, self.TAB_TITLE).text.strip()
 
-    def select_category(self, name):
+    def select_category(self, name: str) -> "ConverterPage":
         """Switch to a converter category tab by its visible name, e.g. 'Temperature'."""
         for tab in self.driver.find_elements(AppiumBy.ID, self.TAB_TITLE):
             if tab.text.strip().lower() == name.lower():
@@ -78,18 +80,18 @@ class ConverterPage:
                 return self
         raise ValueError(f"Unknown converter category: {name!r}")
 
-    def _spinner_text(self, spinner_locator):
+    def _spinner_text(self, spinner_locator: str) -> str:
         spinner = self.driver.find_element(AppiumBy.ID, spinner_locator)
         selected = spinner.find_element(AppiumBy.ID, _SELECTED_ITEM_ID)
         return selected.text.strip()
 
-    def unit_1(self):
+    def unit_1(self) -> str:
         return self._spinner_text(self.SPINNER_1)
 
-    def unit_2(self):
+    def unit_2(self) -> str:
         return self._spinner_text(self.SPINNER_2)
 
-    def type_value(self, value):
+    def type_value(self, value: Union[str, int, float]) -> "ConverterPage":
         """Type digits/dot into the active (source) field via the converter's own keypad."""
         for ch in str(value):
             if ch == ".":
@@ -98,22 +100,22 @@ class ConverterPage:
                 self.driver.find_element(AppiumBy.ID, self._DIGIT_IDS[ch]).click()
         return self
 
-    def clear_value(self):
+    def clear_value(self) -> "ConverterPage":
         self.driver.find_element(AppiumBy.ID, self.CLEAR_BTN).click()
         return self
 
-    def backspace(self):
+    def backspace(self) -> "ConverterPage":
         self.driver.find_element(AppiumBy.ID, self.BACKSPACE_BTN).click()
         return self
 
-    def get_source_value(self):
+    def get_source_value(self) -> str:
         raw = self.driver.find_element(AppiumBy.ID, self.INPUT_1).text.strip()
         return extract_numeric(raw)
 
-    def get_converted_value(self):
+    def get_converted_value(self) -> str:
         raw = self.driver.find_element(AppiumBy.ID, self.INPUT_2).text.strip()
         return extract_numeric(raw)
 
-    def go_back(self):
+    def go_back(self) -> "ConverterPage":
         self.driver.find_element(AppiumBy.ID, self.BACK_BTN).click()
         return self

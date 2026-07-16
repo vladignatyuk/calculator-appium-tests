@@ -1,7 +1,10 @@
 # -*- coding: utf-8 -*-
 """Page Object for the main Samsung Calculator keypad screen."""
 
+from typing import Iterable, Tuple
+
 from appium.webdriver.common.appiumby import AppiumBy
+from appium.webdriver.webdriver import WebDriver
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
@@ -17,7 +20,7 @@ _SUFFIXES = (" Calculation result",)
 _PREFIXES = ("Calculator input field",)
 
 
-def normalize_display_text(raw):
+def normalize_display_text(raw: str) -> str:
     """Strip Samsung's accessibility prefix/suffix wording down to the raw value."""
     text = raw.strip()
     for suffix in _SUFFIXES:
@@ -56,12 +59,12 @@ class CalculatorPage:
         "C": f"{CALC_PKG}:id/calc_keypad_btn_clear",
     }
 
-    def __init__(self, driver):
+    def __init__(self, driver: WebDriver) -> None:
         self.driver = driver
         self.wait = WebDriverWait(driver, 15)
 
     # --- lifecycle / navigation ---
-    def launch(self):
+    def launch(self) -> "CalculatorPage":
         # Force a clean process restart so every test starts on the keypad
         # screen, even if a previous test left the app on history/converter
         # (e.g. because it failed before navigating back).
@@ -70,16 +73,16 @@ class CalculatorPage:
         self.wait.until(EC.presence_of_element_located((AppiumBy.ID, self._DIGIT_IDS["7"])))
         return self
 
-    def open_history(self):
+    def open_history(self) -> "CalculatorPage":
         self.driver.find_element(AppiumBy.ID, self.HISTORY_BTN).click()
         return self
 
-    def open_converter(self):
+    def open_converter(self) -> "CalculatorPage":
         self.driver.find_element(AppiumBy.ID, self.CONVERTER_BTN).click()
         return self
 
     # --- input ---
-    def press(self, key):
+    def press(self, key: str) -> "CalculatorPage":
         """Press a single key: digit '0'-'9', an operator, '.', '=', '%', '+/-', '()' or 'C'."""
         if key in self._DIGIT_IDS:
             locator = self._DIGIT_IDS[key]
@@ -90,30 +93,30 @@ class CalculatorPage:
         self.driver.find_element(AppiumBy.ID, locator).click()
         return self
 
-    def enter_sequence(self, sequence):
+    def enter_sequence(self, sequence: Iterable[str]) -> "CalculatorPage":
         """Press a sequence of keys, e.g. ['7', '+', '3', '=']."""
         for key in sequence:
             self.press(key)
         return self
 
-    def backspace(self):
+    def backspace(self) -> "CalculatorPage":
         self.driver.find_element(AppiumBy.ID, self.BACKSPACE_BTN).click()
         return self
 
-    def clear(self):
+    def clear(self) -> "CalculatorPage":
         self.press("C")
         return self
 
     # --- reading state ---
-    def get_formula_text(self):
+    def get_formula_text(self) -> str:
         raw = self.driver.find_element(AppiumBy.ID, self.FORMULA_FIELD).text.strip()
         return normalize_display_text(raw)
 
-    def get_result_text(self):
+    def get_result_text(self) -> str:
         raw = self.driver.find_element(AppiumBy.ID, self.RESULT_FIELD).text.strip()
         return normalize_display_text(raw)
 
-    def wait_for_output(self):
+    def wait_for_output(self) -> Tuple[str, str]:
         """Wait until either the formula or result field has non-empty text, then return both."""
         self.wait.until(lambda d: self.get_formula_text() or self.get_result_text())
         return self.get_formula_text(), self.get_result_text()

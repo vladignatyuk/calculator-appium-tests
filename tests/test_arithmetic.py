@@ -7,24 +7,14 @@ import pytest
 @pytest.mark.parametrize(
     "sequence, expected",
     [
-        (["7", "+", "3", "="], "10"),
-        (["1", "0", "-", "3", "="], "7"),
-        (["6", "*", "7", "="], "42"),
-        (["1", "0", "/", "2", "="], "5"),
-        (["7", ".", "5", "+", "2", ".", "5", "="], "10"),
-        (["5", "*", "0", "="], "0"),
-        (["3", "-", "1", "0", "="], "-7"),
-        (["1", "0", "/", "3", "="], "3.333"),
-    ],
-    ids=[
-        "addition",
-        "subtraction",
-        "multiplication",
-        "division",
-        "decimals",
-        "multiplication_by_zero",
-        "subtraction_to_negative_result",
-        "non_terminating_division",
+        pytest.param(["7", "+", "3", "="], "10", marks=pytest.mark.smoke, id="addition"),
+        pytest.param(["1", "0", "-", "3", "="], "7", id="subtraction"),
+        pytest.param(["6", "*", "7", "="], "42", id="multiplication"),
+        pytest.param(["1", "0", "/", "2", "="], "5", id="division"),
+        pytest.param(["7", ".", "5", "+", "2", ".", "5", "="], "10", id="decimals"),
+        pytest.param(["5", "*", "0", "="], "0", marks=pytest.mark.boundary, id="multiplication_by_zero"),
+        pytest.param(["3", "-", "1", "0", "="], "-7", marks=pytest.mark.boundary, id="subtraction_to_negative_result"),
+        pytest.param(["1", "0", "/", "3", "="], "3.333", marks=pytest.mark.boundary, id="non_terminating_division"),
     ],
 )
 def test_basic_operations(calculator, sequence, expected):
@@ -46,10 +36,9 @@ def test_negative_number_with_sign_toggle(calculator):
 @pytest.mark.parametrize(
     "sequence, expected",
     [
-        (["5", "0", "%"], "0.5"),
-        (["0", "%"], "0"),
+        pytest.param(["5", "0", "%"], "0.5", id="fifty_percent"),
+        pytest.param(["0", "%"], "0", marks=pytest.mark.boundary, id="zero_percent"),
     ],
-    ids=["fifty_percent", "zero_percent"],
 )
 def test_percentage(calculator, sequence, expected):
     # Confirmed on-device: 50 % -> 0.5, 0 % -> 0.
@@ -71,6 +60,7 @@ def test_percentage_within_expression(calculator):
     )
 
 
+@pytest.mark.boundary
 def test_leading_decimal_point_prepends_zero(calculator):
     # Confirmed on-device: typing '.' before any digit prepends a leading 0.
     calculator.enter_sequence([".", "5"])
@@ -94,6 +84,7 @@ def test_backspace_removes_last_digit(calculator):
     assert formula.startswith("12"), f"Expected '12' after backspace, got {formula!r}"
 
 
+@pytest.mark.boundary
 def test_backspace_on_single_digit_empties_display(calculator):
     # Boundary between "has content" and "empty": backspacing the last
     # remaining digit, not just trimming a multi-digit number.
@@ -127,6 +118,7 @@ def test_repeated_equals_repeats_last_operation(calculator):
     )
 
 
+@pytest.mark.boundary
 def test_double_sign_toggle_returns_to_original_value(calculator):
     calculator.enter_sequence(["5", "+/-", "+/-"])
     formula = calculator.get_formula_text()

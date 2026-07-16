@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 """Coverage for the calculation history panel."""
 
+import pytest
+
 from pages.history_page import HistoryPage
 
 
@@ -18,6 +20,7 @@ def _ensure_history_cleared(calculator):
     history.close()
 
 
+@pytest.mark.smoke
 def test_calculation_appears_in_history(calculator):
     calculator.enter_sequence(["7", "+", "3", "="])
     calculator.wait_for_output()
@@ -86,6 +89,7 @@ def test_repeated_equals_adds_a_separate_history_entry(calculator):
     )
 
 
+@pytest.mark.negative
 def test_error_calculation_is_not_recorded_in_history(calculator):
     _ensure_history_cleared(calculator)
 

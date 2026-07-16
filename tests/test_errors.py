@@ -1,6 +1,10 @@
 # -*- coding: utf-8 -*-
 """Edge cases and error handling for the Samsung Calculator keypad."""
 
+import pytest
+
+pytestmark = pytest.mark.negative
+
 
 def test_divide_by_zero_shows_error(calculator):
     # Confirmed on-device: shows a "cannot divide by zero" style message.
@@ -52,6 +56,7 @@ def test_negative_dividend_divided_by_zero_shows_error(calculator):
     )
 
 
+@pytest.mark.boundary
 def test_backspace_on_empty_display_does_not_crash(calculator):
     calculator.backspace()
     formula, result = calculator.get_formula_text(), calculator.get_result_text()
@@ -60,6 +65,7 @@ def test_backspace_on_empty_display_does_not_crash(calculator):
     )
 
 
+@pytest.mark.boundary
 def test_clear_on_already_empty_display_does_not_crash(calculator):
     calculator.clear()
     formula, result = calculator.get_formula_text(), calculator.get_result_text()
@@ -68,6 +74,7 @@ def test_clear_on_already_empty_display_does_not_crash(calculator):
     )
 
 
+@pytest.mark.boundary
 def test_double_decimal_point_is_ignored(calculator):
     # Confirmed on-device: a second '.' press in the same number is a no-op.
     calculator.enter_sequence(["5", ".", ".", "5"])
@@ -97,6 +104,7 @@ def test_operator_pressed_before_any_operand_does_not_crash(calculator):
     )
 
 
+@pytest.mark.boundary
 def test_equals_on_empty_display_does_not_crash(calculator):
     calculator.press("=")
     formula, result = calculator.get_formula_text(), calculator.get_result_text()

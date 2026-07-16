@@ -1,16 +1,19 @@
 # -*- coding: utf-8 -*-
-"""Coverage for the unit converter (ruler icon)."""
+"""Coverage for the unit converter (ruler icon).
+
+Tests take the `converter` fixture (see conftest.py): it opens the
+converter from the keypad and, on teardown, always restores the 'Area'
+category regardless of whether the test passed -- category selection
+persists across app restarts, so a test that fails mid-switch must not be
+allowed to leak that state into later tests/runs.
+"""
 
 import pytest
 
-from pages.converter_page import ConverterPage
 
-
-def test_converter_default_area_units(calculator):
+@pytest.mark.smoke
+def test_converter_default_area_units(converter):
     # Confirmed on-device: default tab is Area, default units Acres / Square Meters.
-    calculator.open_converter()
-    converter = ConverterPage(calculator.driver).wait_loaded()
-
     assert converter.active_tab_title().lower() == "area", (
         f"Expected default tab 'Area', got {converter.active_tab_title()!r}"
     )
@@ -19,15 +22,11 @@ def test_converter_default_area_units(calculator):
         f"Expected 'Square Meters', got {converter.unit_2()!r}"
     )
 
-    converter.go_back()
 
-
-def test_converter_produces_output_value(calculator):
+@pytest.mark.smoke
+def test_converter_produces_output_value(converter):
     # Confirmed on-device: default Area conversion is Acres -> Square Meters,
     # 1 Acre = 4046.8564224 Square Meters.
-    calculator.open_converter()
-    converter = ConverterPage(calculator.driver).wait_loaded()
-
     converter.clear_value()
     converter.type_value("1")
 
@@ -37,17 +36,12 @@ def test_converter_produces_output_value(calculator):
         f"Expected ~4046.8564224 (1 Acre in Square Meters), got {converted!r}"
     )
 
-    converter.go_back()
 
-
-def test_converter_switch_category_updates_units(calculator):
+def test_converter_switch_category_updates_units(converter):
     # Confirmed on-device: switching tabs changes both units and the
     # conversion in effect. 100 Fahrenheit = 37.7777777778 Celsius.
-    calculator.open_converter()
-    converter = ConverterPage(calculator.driver).wait_loaded()
-
     converter.select_category("Temperature")
-    converter = ConverterPage(calculator.driver).wait_loaded()
+    converter.wait_loaded()
 
     assert converter.active_tab_title().lower() == "temperature", (
         f"Expected active tab 'Temperature', got {converter.active_tab_title()!r}"
@@ -62,20 +56,14 @@ def test_converter_switch_category_updates_units(calculator):
         f"Expected ~37.7777777778 (100F in Celsius), got {converted!r}"
     )
 
-    # Restore the default category so other tests/runs see 'Area' again.
-    converter.select_category("Area")
-    converter.go_back()
 
-
-def test_converter_handles_negative_converted_value(calculator):
+@pytest.mark.negative
+def test_converter_handles_negative_converted_value(converter):
     # Confirmed on-device: negative results are shown with a typographic
     # minus sign (U+2212, not ASCII '-'); this is a real edge case, not
     # just a locator issue -- see extract_numeric() in converter_page.py.
-    calculator.open_converter()
-    converter = ConverterPage(calculator.driver).wait_loaded()
-
     converter.select_category("Temperature")
-    converter = ConverterPage(calculator.driver).wait_loaded()
+    converter.wait_loaded()
 
     converter.clear_value()
     converter.type_value("0")  # 0 Fahrenheit -> negative Celsius
@@ -85,14 +73,8 @@ def test_converter_handles_negative_converted_value(calculator):
         f"Expected ~-17.7777777778 (0F in Celsius), got {converted!r}"
     )
 
-    converter.select_category("Area")
-    converter.go_back()
 
-
-def test_converter_backspace_removes_last_digit(calculator):
-    calculator.open_converter()
-    converter = ConverterPage(calculator.driver).wait_loaded()
-
+def test_converter_backspace_removes_last_digit(converter):
     converter.clear_value()
     converter.type_value("123")
     converter.backspace()
@@ -101,14 +83,10 @@ def test_converter_backspace_removes_last_digit(calculator):
         f"Expected '12' after backspace, got {converter.get_source_value()!r}"
     )
 
-    converter.go_back()
 
-
-def test_converter_backspace_on_single_digit_empties_field(calculator):
+@pytest.mark.boundary
+def test_converter_backspace_on_single_digit_empties_field(converter):
     # Boundary between "has content" and "empty", same as the keypad's.
-    calculator.open_converter()
-    converter = ConverterPage(calculator.driver).wait_loaded()
-
     converter.clear_value()
     converter.type_value("7")
     converter.backspace()
@@ -120,14 +98,9 @@ def test_converter_backspace_on_single_digit_empties_field(calculator):
         f"Expected an empty converted field too, got {converter.get_converted_value()!r}"
     )
 
-    converter.go_back()
 
-
-def test_converter_accepts_decimal_input(calculator):
+def test_converter_accepts_decimal_input(converter):
     # Confirmed on-device: 1.5 Acres = 6070.2846336 Square Meters.
-    calculator.open_converter()
-    converter = ConverterPage(calculator.driver).wait_loaded()
-
     converter.clear_value()
     converter.type_value("1.5")
 
@@ -139,18 +112,11 @@ def test_converter_accepts_decimal_input(calculator):
         f"Expected ~6070.2846336 (1.5 Acres in Square Meters), got {converted!r}"
     )
 
-    converter.go_back()
 
-
-def test_converter_clear_empties_both_fields(calculator):
-    calculator.open_converter()
-    converter = ConverterPage(calculator.driver).wait_loaded()
-
+def test_converter_clear_empties_both_fields(converter):
     converter.clear_value()
     converter.type_value("42")
     converter.clear_value()
 
     assert converter.get_source_value() == "", "Expected the source field to be empty after clearing"
     assert converter.get_converted_value() == "", "Expected the converted field to be empty after clearing"
-
-    converter.go_back()

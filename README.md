@@ -48,9 +48,11 @@ written — worth knowing before adding more:
   in `tests/test_history.py`.
 - **Failed calculations aren't recorded in history** (e.g. divide by zero).
 - **Converter category selection persists** across app restarts (it's not
-  reset by `terminate_app`/`activate_app`), so tests that switch category
-  (e.g. to Temperature) restore it back to Area afterwards to avoid
-  breaking `test_converter_default_area_units` for later runs.
+  reset by `terminate_app`/`activate_app`). The `converter` fixture (see
+  `conftest.py`) always restores it to Area on teardown, *even if the test
+  itself fails* -- restoring it only at the end of a passing test body isn't
+  enough, since an assertion failure partway through would skip that line
+  and leak the wrong category into every test/run afterwards.
 - **Converter negative values use a typographic minus sign** (U+2212), not
   an ASCII hyphen. `extract_numeric()` normalizes it first — without that,
   a negative result silently comes back positive instead of raising.
@@ -72,9 +74,10 @@ calculator-appium-tests/
 │   ├── test_errors.py
 │   ├── test_history.py
 │   └── test_converter.py
-├── conftest.py               # Appium session + CalculatorPage fixtures
+├── conftest.py               # Appium session, page-object fixtures, failure artifacts hook
 ├── requirements.txt
 ├── pytest.ini
+├── artifacts/                 # screenshots + page-source dumps from failed runs (generated, gitignored)
 └── README.md
 ```
 
@@ -114,8 +117,12 @@ calculator-appium-tests/
    ```
    Note the serial shown (e.g. `RZCX11XCA4T`).
 
-5. **Set your device serial** in `conftest.py` — update `DEVICE_UDID` to match
-   your own `adb devices` output.
+5. **Point the suite at your device**, either by editing `DEVICE_UDID` in
+   `conftest.py`, or without touching source via env vars:
+   ```
+   export CALC_DEVICE_UDID=RZCX11XCA4T
+   export CALC_APPIUM_SERVER_URL=http://127.0.0.1:4723/wd/hub  # optional, this is the default
+   ```
 
 6. **Install Python dependencies:**
    ```
@@ -136,6 +143,31 @@ calculator-appium-tests/
 
 Output goes straight to the console (pytest's default `-v` reporting via
 `pytest.ini`) — no extra reporting tooling required.
+
+### Running a subset
+
+Tests are tagged with markers reflecting their place in the equivalence-class
+/ boundary-value design (see `pytest.ini` for the definitions):
+
+```
+pytest -m smoke      # minimal set proving the app fundamentally works (~4 tests)
+pytest -m negative    # invalid/unexpected-input handling (test_errors.py + a few others)
+pytest -m boundary    # tests targeting an exact equivalence-class boundary
+```
+
+Markers aren't mutually exclusive -- a test can be both `negative` and
+`boundary` (e.g. backspacing an already-empty display).
+
+## Debugging a failure
+
+Any failing test automatically saves a screenshot (`.png`) and the full UI
+hierarchy dump (`.xml`, same format as `uiautomator dump`) to `artifacts/`,
+named after the test and a timestamp -- see the `pytest_runtest_makereport`
+hook in `conftest.py`. This is what you want when a test fails on a machine
+you don't have physical access to (CI runner, teammate's setup): the
+combination of "what the screen looked like" + "the exact locators and text
+that were present" is usually enough to tell a real regression from a
+locator that shifted on a newer OneUI version.
 
 ## Performance
 
