@@ -137,6 +137,29 @@ calculator-appium-tests/
 Output goes straight to the console (pytest's default `-v` reporting via
 `pytest.ini`) — no extra reporting tooling required.
 
+## Performance
+
+The full suite runs in ~5 minutes against a real device (down from ~7.5min).
+Two things account for that, both in `conftest.py`:
+
+- **`driver` is session-scoped**, not per-test. Starting a fresh UiAutomator2
+  session costs ~2-3s; per-test isolation already comes from `calculator`
+  forcing a clean app relaunch (`terminate_app` + `activate_app`), so paying
+  the session-startup cost 45 times over added nothing but time.
+- **`FAST_SETTINGS`** lowers UiAutomator2's `waitForIdleTimeout` /
+  `actionAcknowledgmentTimeout` from their multi-second defaults to 200ms.
+
+What did *not* pan out, worth knowing before reaching for it again: pushing
+those same settings to 0 (skip the idle check entirely) is another ~5x
+faster on top of that, but reliably drops taps under a 25+ rep stress test
+of a real interaction sequence — there's no safe middle ground between "full
+idle wait" and "no idle wait at all" for this app, so 200ms is the floor.
+
+Real parallelism (pytest-xdist etc.) isn't an option here: every test drives
+the same physical device, which only one Appium session can control at a
+time. Scaling further would need multiple physical devices, one Appium
+server per device, and splitting the suite across them.
+
 ## Notes on device-specific locators
 
 All `resource-id`s used in the Page Objects were captured directly from a
